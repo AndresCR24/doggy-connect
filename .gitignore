@@ -11,8 +11,21 @@ application-prod.properties
 
 .DS_Store
 .env
+.venv
+.venv/
+venv
 node_modules
+ver.py
 
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de Serverless
+.serverless/
+.requirements/
+
+.dynamodb_data/
 docker-compose.yaml
 ### STS ###
 .apt_generated
