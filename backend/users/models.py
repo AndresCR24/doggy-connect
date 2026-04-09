@@ -1,13 +1,21 @@
+from enum import Enum
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-# Modelo para cuando el cliente envía datos (POST/PUT)
+
+class UserRole(str, Enum):
+    owner = "owner"
+    walker = "walker"
+    admin = "admin"
+
+
 class UserCreate(BaseModel):
     nombre: str
     email: EmailStr
-    nombre_mascota: str
-    raza_mascota: Optional[str] = "No especificada"
+    role: UserRole = UserRole.owner
+    telefono: Optional[str] = None
+    ciudad: Optional[str] = None
 
-# Modelo para cuando la API devuelve datos (incluye el ID generado)
+
 class UserResponse(UserCreate):
     id: str
