@@ -20,7 +20,7 @@ ver.py
 # Caché de Python
 __pycache__/
 *.pyc
-
+.next
 # Archivos de Serverless
 .serverless/
 .requirements/

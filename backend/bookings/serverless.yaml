@@ -1,0 +1,76 @@
+service: doggy-connect-bookings
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: us-east-1
+  environment:
+    BOOKINGS_TABLE: ${self:service}-${sls:stage}-bookings
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource:
+            - !GetAtt BookingsTable.Arn
+
+plugins:
+  - serverless-offline
+  - serverless-dynamodb
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    useStaticCache: false
+    useDownloadCache: false
+  serverless-offline:
+    noPrependStageInUrl: true
+  serverless-dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
+      seed: true
+      convertEmptyValues: true
+      noStart: true
+
+    seed:
+      local:
+        sources:
+          - table: bookingsTable
+
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+
+resources:
+  Resources:
+    BookingsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.BOOKINGS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: booking_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: booking_id
+            KeyType: HASH
