@@ -8,22 +8,31 @@ export default function Navbar() {
           </div>
           <div className="text-xl font-semibold tracking-tight text-gray-900">Doggy Connect & Walk</div>
         </div>
-        <nav className="flex items-center gap-4">
-          <a
-            href="/"
-            className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
-          >
+        <nav className="flex items-center gap-1">
+          <a href="/" className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
             Inicio
           </a>
-          <a
-            href="/requests"
-            className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
-          >
-            Solicitudes
+          <a href="/usuarios" className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
+            Usuarios
           </a>
-          <span className="hidden sm:block h-6 w-px bg-gray-200" aria-hidden="true" />
+          <a href="/mascotas" className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
+            Mascotas
+          </a>
+          <a href="/paseadores" className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
+            Paseadores
+          </a>
+          <a href="/match" className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 hover:text-indigo-800">
+            💞 Match
+          </a>
+          <a href="/reservas" className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
+            Reservas
+          </a>
+          <a href="/backend" className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900">
+            Backend
+          </a>
+          <span className="hidden sm:block h-6 w-px bg-gray-200 mx-1" aria-hidden="true" />
           <a
-            href="/pet/register"
+            href="/mascotas"
             className="inline-flex items-center rounded-full bg-gray-900 px-5 py-2 text-white transition hover:-translate-y-0.5 hover:bg-gray-800"
           >
             Registrar Mascota

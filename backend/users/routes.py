@@ -25,6 +25,26 @@ table = dynamodb.Table(os.environ.get('USERS_TABLE'))
 router = APIRouter()
 
 # ==========================================
+# R: LIST ALL (Listar todos los usuarios)
+# ==========================================
+@router.get("/users", response_model=list[UserResponse])
+def list_users():
+    try:
+        items = []
+        response = table.scan()
+        items.extend(response.get("Items", []))
+        # Paginación automática de DynamoDB
+        while "LastEvaluatedKey" in response:
+            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            items.extend(response.get("Items", []))
+        for item in items:
+            item["id"] = item["user_id"]
+        return items
+    except ClientError as e:
+        print(f"Error de AWS: {e}")
+        raise HTTPException(status_code=500, detail="Error consultando DynamoDB")
+
+# ==========================================
 # C: CREATE (Crear un usuario)
 # ==========================================
 @router.post("/users", response_model=UserResponse, status_code=201)

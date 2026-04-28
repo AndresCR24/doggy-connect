@@ -16,3 +16,16 @@
     @apply rounded-3xl border border-white/80 bg-white/85 shadow-[0_10px_35px_-18px_rgba(15,23,42,0.35)] backdrop-blur;
   }
 }
+
+@keyframes popIn {
+  0%   { transform: scale(0.7); opacity: 0; }
+  70%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes heartBeat {
+  0%, 100% { transform: scale(1); }
+  25%       { transform: scale(1.2); }
+  50%       { transform: scale(0.95); }
+  75%       { transform: scale(1.15); }
+}

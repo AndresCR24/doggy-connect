@@ -1,5 +1,9 @@
 {
   "/page": "app/page.js",
-  "/requests/page": "app/requests/page.js",
-  "/pet/register/page": "app/pet/register/page.js"
+  "/reservas/page": "app/reservas/page.js",
+  "/api/[service]/[[...path]]/route": "app/api/[service]/[[...path]]/route.js",
+  "/mascotas/page": "app/mascotas/page.js",
+  "/usuarios/page": "app/usuarios/page.js",
+  "/match/page": "app/match/page.js",
+  "/paseadores/page": "app/paseadores/page.js"
 }

@@ -11,15 +11,30 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/requests/page": [
+    "/usuarios/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/requests/page.js"
+      "static/chunks/app/usuarios/page.js"
     ],
-    "/pet/register/page": [
+    "/paseadores/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/pet/register/page.js"
+      "static/chunks/app/paseadores/page.js"
+    ],
+    "/reservas/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/reservas/page.js"
+    ],
+    "/match/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/match/page.js"
+    ],
+    "/mascotas/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/mascotas/page.js"
     ]
   }
 }

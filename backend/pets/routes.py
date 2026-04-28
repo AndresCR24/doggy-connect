@@ -26,6 +26,25 @@ table = dynamodb.Table(os.environ.get('PETS_TABLE'))
 router = APIRouter()
 
 # ==========================================
+# R: LIST ALL (Listar todas las mascotas)
+# ==========================================
+@router.get("/pets", response_model=list[PetResponse])
+def list_pets():
+    try:
+        items = []
+        response = table.scan()
+        items.extend(response.get("Items", []))
+        while "LastEvaluatedKey" in response:
+            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            items.extend(response.get("Items", []))
+        for item in items:
+            item["id"] = item["pet_id"]
+        return items
+    except ClientError as e:
+        print(f"Error de AWS: {e}")
+        raise HTTPException(status_code=500, detail="Error consultando DynamoDB")
+
+# ==========================================
 # C: CREATE (Registrar una mascota)
 # ==========================================
 @router.post("/pets", response_model=PetResponse, status_code=201)

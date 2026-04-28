@@ -24,6 +24,27 @@ table = dynamodb.Table(os.environ.get('WALKERS_TABLE'))
 router = APIRouter()
 
 # ==========================================
+# R: LIST ALL (Listar todos los paseadores)
+# ==========================================
+@router.get("/walkers", response_model=list[WalkerResponse])
+def list_walkers():
+    try:
+        items = []
+        response = table.scan()
+        items.extend(response.get("Items", []))
+        while "LastEvaluatedKey" in response:
+            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            items.extend(response.get("Items", []))
+        for item in items:
+            item["id"] = item["walker_id"]
+            item["precio_por_hora"] = float(item["precio_por_hora"])
+            item["rating"] = float(item.get("rating", "0.0"))
+        return items
+    except ClientError as e:
+        print(f"Error de AWS: {e}")
+        raise HTTPException(status_code=500, detail="Error consultando DynamoDB")
+
+# ==========================================
 # C: CREATE (Registrar un paseador)
 # ==========================================
 @router.post("/walkers", response_model=WalkerResponse, status_code=201)
