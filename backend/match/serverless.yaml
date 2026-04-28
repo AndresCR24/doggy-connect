@@ -1,11 +1,13 @@
-service: doggy-connect-pets
+service: doggy-connect-match
 
 provider:
   name: aws
   runtime: python3.12
   region: us-east-1
   environment:
-    PETS_TABLE: ${self:service}-${sls:stage}-pets
+    SWIPES_TABLE: ${self:service}-${sls:stage}-swipes
+    MATCHES_TABLE: ${self:service}-${sls:stage}-matches
+    MATCH_PREFERENCES_TABLE: ${self:service}-${sls:stage}-preferences
   iam:
     role:
       statements:
@@ -18,7 +20,9 @@ provider:
             - dynamodb:Scan
             - dynamodb:Query
           Resource:
-            - !GetAtt PetsTable.Arn
+            - !GetAtt SwipesTable.Arn
+            - !GetAtt MatchesTable.Arn
+            - !GetAtt MatchPreferencesTable.Arn
 
 plugins:
   - serverless-offline
@@ -46,7 +50,9 @@ custom:
     seed:
       local:
         sources:
-          - table: petsTable
+          - table: swipesTable
+          - table: matchesTable
+          - table: matchPreferencesTable
 
 functions:
   api:
@@ -63,10 +69,34 @@ functions:
 
 resources:
   Resources:
-    PetsTable:
+    SwipesTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.PETS_TABLE}
+        TableName: ${self:provider.environment.SWIPES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: swipe_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: swipe_id
+            KeyType: HASH
+
+    MatchesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.MATCHES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: match_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: match_id
+            KeyType: HASH
+
+    MatchPreferencesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.MATCH_PREFERENCES_TABLE}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: pet_id
