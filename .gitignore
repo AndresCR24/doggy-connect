@@ -1,0 +1,69 @@
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+application.properties
+application-dev.properties
+application-prod.properties
+
+.DS_Store
+.env
+.venv
+.venv/
+venv
+node_modules
+ver.py
+
+### Next.js frontend ###
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/.env.local
+frontend/.env*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de Serverless
+.serverless/
+.requirements/
+
+.dynamodb_data/
+docker-compose.yaml
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
