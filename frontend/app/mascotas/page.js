@@ -55,7 +55,7 @@ function PetCard({ pet, onView, onEdit, onDelete }) {
       onClick={() => onView(pet.id)}
     >
       <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-2xl shadow-md shadow-purple-300/40">
+        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-4xl shadow-md shadow-purple-300/40 flex-shrink-0">
           {SPECIES_EMOJI[pet.especie] ?? "🐾"}
         </div>
         <div className="min-w-0">

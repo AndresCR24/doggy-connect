@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Navbar from "../../components/Navbar";
-import { petsApi, matchApi } from "../../lib/apiClient";
+import { petsApi, matchApi, mediaApi } from "../../lib/apiClient";
 import AuthGate from "../../components/AuthGate";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -49,7 +49,7 @@ function Toast({ msg, type }) {
 }
 
 /** Tarjeta individual de una mascota en el deck */
-function SwipeCard({ pet, swipeDir, isTop }) {
+function SwipeCard({ pet, swipeDir, isTop, avatarUrl }) {
   const g = gradient(pet.id);
 
   const animClass =
@@ -65,11 +65,15 @@ function SwipeCard({ pet, swipeDir, isTop }) {
     >
       {/* Zona superior — avatar */}
       <div
-        className={`h-[62%] bg-gradient-to-br ${g} flex flex-col items-center justify-center gap-2 relative`}
+        className={`h-[62%] bg-gradient-to-br ${g} flex flex-col items-center justify-center gap-2 relative overflow-hidden`}
       >
-        <span className="text-[7rem] drop-shadow-lg leading-none select-none">
-          {petEmoji(pet)}
-        </span>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={pet.nombre} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <span className="text-[7rem] drop-shadow-lg leading-none select-none">
+            {petEmoji(pet)}
+          </span>
+        )}
         {/* Like/Nope overlay hints */}
         {isTop && swipeDir === "like" && (
           <div className="absolute top-6 left-6 rotate-[-20deg] rounded-xl border-4 border-emerald-400 px-4 py-1 text-3xl font-black text-emerald-400 opacity-90">
@@ -109,7 +113,7 @@ function SwipeCard({ pet, swipeDir, isTop }) {
 }
 
 /** Stack de 3 tarjetas */
-function CardDeck({ queue, currentIdx, swipeDir }) {
+function CardDeck({ queue, currentIdx, swipeDir, petAvatars }) {
   const cards = [
     { offset: 2, scale: "scale-[0.88]", translate: "translate-y-5" },
     { offset: 1, scale: "scale-[0.94]", translate: "translate-y-2.5" },
@@ -131,6 +135,7 @@ function CardDeck({ queue, currentIdx, swipeDir }) {
               pet={pet}
               swipeDir={swipeDir}
               isTop={offset === 0}
+              avatarUrl={petAvatars?.[pet.id]}
             />
           </div>
         );
@@ -140,7 +145,7 @@ function CardDeck({ queue, currentIdx, swipeDir }) {
 }
 
 /** Modal de celebración de match */
-function MatchModal({ myPet, matchedPet, onClose }) {
+function MatchModal({ myPet, matchedPet, onClose, myAvatarUrl, matchedAvatarUrl }) {
   if (!matchedPet) return null;
   const ga = gradient(myPet?.id);
   const gb = gradient(matchedPet.id);
@@ -154,14 +159,18 @@ function MatchModal({ myPet, matchedPet, onClose }) {
         {/* Avatars superpuestos */}
         <div className="flex -space-x-6 mb-2">
           <div
-            className={`h-24 w-24 rounded-full bg-gradient-to-br ${ga} flex items-center justify-center text-5xl border-4 border-white shadow-2xl shadow-indigo-300/40`}
+            className={`h-24 w-24 rounded-full bg-gradient-to-br ${ga} flex items-center justify-center text-5xl border-4 border-white shadow-2xl shadow-indigo-300/40 overflow-hidden`}
           >
-            {petEmoji(myPet)}
+            {myAvatarUrl
+              ? <img src={myAvatarUrl} alt={myPet?.nombre} className="w-full h-full object-cover" />
+              : petEmoji(myPet)}
           </div>
           <div
-            className={`h-24 w-24 rounded-full bg-gradient-to-br ${gb} flex items-center justify-center text-5xl border-4 border-white shadow-2xl shadow-pink-300/40`}
+            className={`h-24 w-24 rounded-full bg-gradient-to-br ${gb} flex items-center justify-center text-5xl border-4 border-white shadow-2xl shadow-pink-300/40 overflow-hidden`}
           >
-            {petEmoji(matchedPet)}
+            {matchedAvatarUrl
+              ? <img src={matchedAvatarUrl} alt={matchedPet.nombre} className="w-full h-full object-cover" />
+              : petEmoji(matchedPet)}
           </div>
         </div>
 
@@ -193,7 +202,7 @@ function MatchModal({ myPet, matchedPet, onClose }) {
 }
 
 /** Tarjeta de match en la pestaña "Mis Matches" */
-function MatchCard({ pet, matchId, matchStatus, onUnmatch }) {
+function MatchCard({ pet, matchId, matchStatus, onUnmatch, avatarUrl }) {
   const g = gradient(pet?.id);
   const STATUS = {
     active:    { label: "Activo",     color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -204,8 +213,10 @@ function MatchCard({ pet, matchId, matchStatus, onUnmatch }) {
 
   return (
     <div className="premium-card overflow-hidden transition duration-200 hover:-translate-y-0.5">
-      <div className={`h-28 bg-gradient-to-br ${g} flex items-center justify-center text-5xl`}>
-        {petEmoji(pet)}
+      <div className={`h-28 bg-gradient-to-br ${g} flex items-center justify-center text-5xl overflow-hidden`}>
+        {avatarUrl
+          ? <img src={avatarUrl} alt={pet?.nombre} className="w-full h-full object-cover" />
+          : petEmoji(pet)}
       </div>
       <div className="p-4 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
@@ -310,7 +321,7 @@ function SetupScreen({ onStart }) {
 
 // ─── Selector de mascota ─────────────────────────────────────────────────────
 
-function PetSelectorScreen({ pets, onSelect }) {
+function PetSelectorScreen({ pets, onSelect, avatarMap }) {
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-md">
@@ -333,9 +344,11 @@ function PetSelectorScreen({ pets, onSelect }) {
               className="w-full premium-card px-5 py-4 flex items-center gap-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
             >
               <div
-                className={`h-14 w-14 rounded-full bg-gradient-to-br ${gradient(pet.id)} flex items-center justify-center text-3xl shadow-md flex-shrink-0`}
+                className={`h-14 w-14 rounded-full bg-gradient-to-br ${gradient(pet.id)} flex items-center justify-center text-3xl shadow-md flex-shrink-0 overflow-hidden`}
               >
-                {petEmoji(pet)}
+                {avatarMap?.[pet.id]
+                  ? <img src={avatarMap[pet.id]} alt={pet.nombre} className="w-full h-full object-cover rounded-full" />
+                  : petEmoji(pet)}
               </div>
               <div className="min-w-0">
                 <p className="font-bold text-slate-900">{pet.nombre}</p>
@@ -377,6 +390,9 @@ export default function MatchPage() {
   const [matchedPets, setMatchedPets] = useState({});
   const [newMatchPet, setNewMatchPet] = useState(null);
 
+  // Avatares
+  const [petAvatars, setPetAvatars] = useState({});
+
   // UI
   const [activeTab, setActiveTab] = useState("swipe");
   const [toast, setToast] = useState({ msg: "", type: "ok" });
@@ -384,6 +400,20 @@ export default function MatchPage() {
   function notify(msg, type = "ok") {
     setToast({ msg, type });
     setTimeout(() => setToast({ msg: "", type: "ok" }), 3000);
+  }
+
+  async function fetchAvatars(ids) {
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        mediaApi
+          .listByEntity("pet_avatar", id)
+          .then((data) => ({ id, url: Array.isArray(data) && data[0]?.public_url ? data[0].public_url : null }))
+          .catch(() => ({ id, url: null }))
+      )
+    );
+    const map = {};
+    results.forEach((r) => { if (r.status === "fulfilled") map[r.value.id] = r.value.url; });
+    setPetAvatars((prev) => ({ ...prev, ...map }));
   }
 
   // ─── Cargar mascotas del usuario automáticamente ────────────────────────
@@ -395,6 +425,7 @@ export default function MatchPage() {
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
         setMyPets(list);
+        if (list.length > 0) fetchAvatars(list.map((p) => p.id));
         // Si solo tiene una mascota, arrancar automáticamente
         if (list.length === 1) handleStart(list[0]);
       })
@@ -430,6 +461,9 @@ export default function MatchPage() {
 
       setQueue(filtered);
       setCurrentIdx(0);
+
+      // Cargar avatares para el queue y mascotas emparejadas
+      fetchAvatars(filtered.map((p) => p.id));
 
       // Cargar datos de pets emparejados
       await loadMatchPets(myMatches, allPets);
@@ -506,6 +540,7 @@ export default function MatchPage() {
             setMatches((prev) => [newMatch, ...prev]);
             setMatchedPets((prev) => ({ ...prev, [newMatch.id]: target }));
             setNewMatchPet(target);
+            fetchAvatars([target.id]);
           }
         }
       } catch (e) {
@@ -594,7 +629,7 @@ export default function MatchPage() {
     return (
       <main>
         <Navbar />
-        <PetSelectorScreen pets={myPets} onSelect={handleStart} />
+        <PetSelectorScreen pets={myPets} onSelect={handleStart} avatarMap={petAvatars} />
       </main>
     );
   }
@@ -612,6 +647,8 @@ export default function MatchPage() {
         myPet={myPet}
         matchedPet={newMatchPet}
         onClose={() => setNewMatchPet(null)}
+        myAvatarUrl={petAvatars[myPet?.id]}
+        matchedAvatarUrl={newMatchPet ? petAvatars[newMatchPet.id] : null}
       />
 
       <div className="mx-auto max-w-2xl px-4 py-8 flex flex-col items-center gap-6">
@@ -620,9 +657,11 @@ export default function MatchPage() {
         <div className="w-full premium-card px-5 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div
-              className={`h-10 w-10 rounded-full bg-gradient-to-br ${gradient(myPet.id)} flex items-center justify-center text-xl shadow`}
+              className={`h-10 w-10 rounded-full bg-gradient-to-br ${gradient(myPet.id)} flex items-center justify-center text-xl shadow overflow-hidden`}
             >
-              {petEmoji(myPet)}
+              {petAvatars[myPet.id]
+                ? <img src={petAvatars[myPet.id]} alt={myPet.nombre} className="w-full h-full object-cover" />
+                : petEmoji(myPet)}
             </div>
             <div>
               <p className="font-bold text-slate-900 text-sm">{myPet.nombre}</p>
@@ -684,6 +723,7 @@ export default function MatchPage() {
                     queue={queue}
                     currentIdx={currentIdx}
                     swipeDir={swipeDir}
+                    petAvatars={petAvatars}
                   />
                 </div>
 
@@ -772,6 +812,7 @@ export default function MatchPage() {
                     matchId={m.id}
                     matchStatus={m.status}
                     onUnmatch={handleUnmatch}
+                    avatarUrl={petAvatars[matchedPets[m.id]?.id]}
                   />
                 ))}
               </div>

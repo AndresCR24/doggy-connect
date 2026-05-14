@@ -45,11 +45,15 @@ export default function PetProfilePage() {
   const { user } = useAuth();
   const fileInputRef = useRef(null);
 
+  const avatarInputRef = useRef(null);
+
   const [pet, setPet] = useState(null);
   const [photos, setPhotos] = useState([]);
+  const [avatar, setAvatar] = useState(null); // { id, public_url }
   const [loadingPet, setLoadingPet] = useState(true);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [toast, setToast] = useState({ msg: "", type: "ok" });
   const [lightbox, setLightbox] = useState(null); // URL de foto en fullscreen
 
@@ -72,7 +76,50 @@ export default function PetProfilePage() {
       .then((data) => setPhotos(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => setLoadingPhotos(false));
+
+    mediaApi.listByEntity("pet_avatar", petId)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        if (list.length > 0) setAvatar(list[0]);
+      })
+      .catch(() => {});
   }, [petId]);
+
+  // ─── Cambiar foto de perfil ──────────────────────────────────────────────
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!ALLOWED.includes(file.type)) {
+      notify("Solo se permiten imágenes JPEG, PNG, WEBP o GIF.", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      notify("El archivo no puede superar 5 MB.", "error");
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      // Eliminar avatar anterior si existe
+      if (avatar?.id) {
+        await mediaApi.remove(avatar.id).catch(() => {});
+      }
+
+      const { upload_url, public_url, media_id } = await mediaApi.presign(
+        "pet_avatar", petId, file.name, file.type
+      );
+      await mediaApi.uploadToS3(upload_url, file);
+      setAvatar({ id: media_id, public_url });
+      notify("¡Foto de perfil actualizada! 🐾");
+    } catch (err) {
+      notify(err.message || "Error al subir la foto de perfil", "error");
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = "";
+    }
+  }
 
   // ─── Subir foto ──────────────────────────────────────────────────────────
   async function handleFileChange(e) {
@@ -199,8 +246,36 @@ export default function PetProfilePage() {
         {/* ── Header de perfil ─────────────────────────────────────────── */}
         <div className="premium-card p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-6">
           {/* Avatar */}
-          <div className={`h-24 w-24 rounded-full bg-gradient-to-br ${g} flex items-center justify-center text-5xl shadow-lg flex-shrink-0`}>
-            {petEmoji(pet)}
+          <div className="relative flex-shrink-0 group">
+            <div className={`h-24 w-24 rounded-full bg-gradient-to-br ${g} flex items-center justify-center text-5xl shadow-lg overflow-hidden`}>
+              {avatar?.public_url ? (
+                <img src={avatar.public_url} alt="Foto de perfil" className="w-full h-full object-cover" />
+              ) : (
+                petEmoji(pet)
+              )}
+            </div>
+            {isOwner && (
+              <>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition disabled:opacity-50"
+                  title="Cambiar foto de perfil"
+                >
+                  {uploadingAvatar
+                    ? <span className="text-white text-xl animate-spin">⏳</span>
+                    : <span className="text-white text-2xl">📷</span>
+                  }
+                </button>
+              </>
+            )}
           </div>
 
           {/* Info */}
@@ -274,7 +349,7 @@ export default function PetProfilePage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-1 sm:gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {photos.map((photo) => (
               <div key={photo.id} className="relative group aspect-square">
                 <img
