@@ -48,7 +48,7 @@ function formatDate(iso) {
   }
 }
 
-function BookingCard({ booking, onStatusChange, onDelete, onEdit }) {
+function BookingCard({ booking, onStatusChange, onDelete, canChangeStatus = false }) {
   const st = STATUS_CONFIG[booking.status] ?? { label: booking.status, color: "bg-gray-100 text-gray-700 border-gray-200" };
   const pay = PAYMENT_CONFIG[booking.payment_status] ?? { label: booking.payment_status, color: "text-gray-500" };
   const nextStatuses = Object.keys(STATUS_CONFIG).filter((s) => s !== booking.status);
@@ -88,17 +88,19 @@ function BookingCard({ booking, onStatusChange, onDelete, onEdit }) {
       <p className={`text-xs font-medium ${pay.color}`}>{pay.label}</p>
 
       {/* Status changer */}
-      <div className="flex gap-1.5 flex-wrap pt-1">
-        {nextStatuses.map((s) => (
-          <button
-            key={s}
-            onClick={() => onStatusChange(booking.id, s)}
-            className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:opacity-80 ${STATUS_CONFIG[s]?.color ?? "border-gray-200 text-gray-600"}`}
-          >
-            → {STATUS_CONFIG[s]?.label ?? s}
-          </button>
-        ))}
-      </div>
+      {canChangeStatus && (
+        <div className="flex gap-1.5 flex-wrap pt-1">
+          {nextStatuses.map((s) => (
+            <button
+              key={s}
+              onClick={() => onStatusChange(booking.id, s)}
+              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition hover:opacity-80 ${STATUS_CONFIG[s]?.color ?? "border-gray-200 text-gray-600"}`}
+            >
+              → {STATUS_CONFIG[s]?.label ?? s}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-2 pt-1">
         <button
@@ -472,6 +474,7 @@ export default function ReservasPage() {
                     booking={b}
                     onStatusChange={handleStatusChange}
                     onDelete={handleDelete}
+                    canChangeStatus={false}
                   />
                 ))}
               </div>
@@ -525,6 +528,7 @@ export default function ReservasPage() {
                     booking={b}
                     onStatusChange={handlePedidoStatusChange}
                     onDelete={() => {}}
+                    canChangeStatus={true}
                   />
                 ))}
               </div>

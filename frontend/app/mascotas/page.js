@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import { petsApi } from "../../lib/apiClient";
 import AuthGate from "../../components/AuthGate";
+import { useAuth } from "../../contexts/AuthContext";
 
 const SPECIES = [
   { value: "dog", label: "Perro 🐕" },
@@ -98,7 +99,6 @@ function PetForm({ initial, onSave, onCancel, loading }) {
 
   function validate() {
     const e = {};
-    if (!form.owner_id.trim()) e.owner_id = "El ID del dueño es requerido";
     if (!form.nombre.trim()) e.nombre = "El nombre es requerido";
     if (!form.especie) e.especie = "La especie es requerida";
     if (form.edad !== "" && (isNaN(Number(form.edad)) || Number(form.edad) < 0))
@@ -130,20 +130,6 @@ function PetForm({ initial, onSave, onCancel, loading }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">
-          ID del dueño (owner_id) *
-        </label>
-        <input
-          name="owner_id"
-          value={form.owner_id}
-          onChange={handleChange}
-          placeholder="UUID del usuario dueño"
-          className={inputCls}
-          disabled={!!initial}
-        />
-        {errors.owner_id && <p className={errCls}>{errors.owner_id}</p>}
-      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">
@@ -247,6 +233,7 @@ function PetForm({ initial, onSave, onCancel, loading }) {
 
 
 export default function MascotasPage() {
+  const { user } = useAuth();
   const [pets, setPets] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editPet, setEditPet] = useState(null);
@@ -255,14 +242,12 @@ export default function MascotasPage() {
   const [toast, setToast] = useState({ msg: "", type: "ok" });
 
   useEffect(() => {
-    petsApi.list()
-      .then(async (data) => {
-        const list = Array.isArray(data) ? data : [];
-        setPets(list);
-      })
+    if (!user) return;
+    petsApi.getByOwner(user.id)
+      .then((data) => setPets(Array.isArray(data) ? data : []))
       .catch((e) => notify(e.message, "error"))
       .finally(() => setFetching(false));
-  }, []);
+  }, [user]);
 
   function notify(msg, type = "ok") {
     setToast({ msg, type });
@@ -351,7 +336,7 @@ export default function MascotasPage() {
                       edad: editPet.edad?.toString() ?? "",
                       genero: editPet.genero ?? "",
                     }
-                  : null
+                  : { ...EMPTY_FORM, owner_id: user?.id ?? "" }
               }
               onSave={editPet ? handleUpdate : handleCreate}
               onCancel={() => { setShowForm(false); setEditPet(null); }}
