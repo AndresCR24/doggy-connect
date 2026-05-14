@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Navbar from "../../components/Navbar";
 import { bookingsApi } from "../../lib/apiClient";
+import AuthGate from "../../components/AuthGate";
 
 const STATUS_CONFIG = {
   pending:     { label: "Pendiente",    color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
@@ -377,6 +378,7 @@ export default function ReservasPage() {
   return (
     <main>
       <Navbar />
+      <AuthGate>
       <Toast msg={toast.msg} type={toast.type} onClose={() => setToast({ msg: "", type: "ok" })} />
 
       <div className="mx-auto max-w-6xl px-6 py-10">
@@ -461,6 +463,7 @@ export default function ReservasPage() {
           </div>
         )}
       </div>
+      </AuthGate>
     </main>
   );
 }

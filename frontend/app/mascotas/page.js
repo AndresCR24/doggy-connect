@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
-import { petsApi, usersApi } from "../../lib/apiClient";
+import { petsApi } from "../../lib/apiClient";
+import AuthGate from "../../components/AuthGate";
 
 const SPECIES = [
   { value: "dog", label: "Perro 🐕" },
@@ -45,7 +46,7 @@ function Toast({ msg, type, onClose }) {
 
 const SPECIES_EMOJI = { dog: "🐕", cat: "🐱" };
 
-function PetCard({ pet, ownerName, onEdit, onDelete }) {
+function PetCard({ pet, onEdit, onDelete }) {
   return (
     <div className="premium-card p-5 flex flex-col gap-3 transition duration-200 hover:-translate-y-0.5">
       <div className="flex items-center gap-3">
@@ -55,11 +56,6 @@ function PetCard({ pet, ownerName, onEdit, onDelete }) {
         <div className="min-w-0">
           <p className="font-semibold text-slate-900">{pet.nombre}</p>
           <p className="text-xs text-slate-500 capitalize">{pet.especie}</p>
-          {ownerName && (
-            <p className="text-xs text-indigo-600 font-medium mt-0.5 truncate">
-              👤 {ownerName}
-            </p>
-          )}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
@@ -248,93 +244,10 @@ function PetForm({ initial, onSave, onCancel, loading }) {
   );
 }
 
-function LookupPanel({ onLoaded }) {
-  const [ownerId, setOwnerId] = useState("");
-  const [petId, setPetId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [tab, setTab] = useState("owner");
 
-  async function handleLookup() {
-    const id = tab === "owner" ? ownerId.trim() : petId.trim();
-    if (!id) return;
-    setLoading(true);
-    setError("");
-    try {
-      const result =
-        tab === "owner"
-          ? await petsApi.getByOwner(id)
-          : [await petsApi.get(id)];
-      onLoaded(Array.isArray(result) ? result : [result]);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="premium-card p-5 flex flex-col gap-3">
-      <div className="flex gap-2 text-xs font-medium">
-        {[
-          { key: "owner", label: "Por dueño" },
-          { key: "pet", label: "Por ID mascota" },
-        ].map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`rounded-full px-3 py-1 transition ${
-              tab === t.key
-                ? "bg-gray-900 text-white"
-                : "border border-gray-200 text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <input
-          value={tab === "owner" ? ownerId : petId}
-          onChange={(e) =>
-            tab === "owner"
-              ? setOwnerId(e.target.value)
-              : setPetId(e.target.value)
-          }
-          placeholder={tab === "owner" ? "UUID del dueño…" : "UUID de la mascota…"}
-          className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-        />
-        <button
-          onClick={handleLookup}
-          disabled={loading || !(tab === "owner" ? ownerId : petId).trim()}
-          className="rounded-full bg-gray-900 px-5 py-2 text-sm text-white transition hover:-translate-y-0.5 hover:bg-gray-800 disabled:opacity-50"
-        >
-          {loading ? "…" : "Buscar"}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}
-
-async function fetchOwnerNames(petList, existingOwners = {}) {
-  const uniqueIds = [...new Set(
-    petList.map((p) => p.owner_id).filter((id) => id && !existingOwners[id])
-  )];
-  if (!uniqueIds.length) return existingOwners;
-  const results = await Promise.allSettled(uniqueIds.map((id) => usersApi.get(id)));
-  const updated = { ...existingOwners };
-  results.forEach((r, i) => {
-    if (r.status === "fulfilled" && r.value?.nombre) {
-      updated[uniqueIds[i]] = r.value.nombre;
-    }
-  });
-  return updated;
-}
 
 export default function MascotasPage() {
   const [pets, setPets] = useState([]);
-  const [owners, setOwners] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editPet, setEditPet] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -346,8 +259,6 @@ export default function MascotasPage() {
       .then(async (data) => {
         const list = Array.isArray(data) ? data : [];
         setPets(list);
-        const names = await fetchOwnerNames(list);
-        setOwners(names);
       })
       .catch((e) => notify(e.message, "error"))
       .finally(() => setFetching(false));
@@ -397,21 +308,10 @@ export default function MascotasPage() {
     }
   }
 
-  async function handleLoaded(newPets) {
-    setPets((prev) => {
-      const map = new Map(prev.map((p) => [p.id, p]));
-      newPets.forEach((p) => map.set(p.id, p));
-      return Array.from(map.values());
-    });
-    setOwners((prev) => {
-      fetchOwnerNames(newPets, prev).then(setOwners);
-      return prev;
-    });
-  }
-
   return (
     <main>
       <Navbar />
+      <AuthGate>
       <Toast
         msg={toast.msg}
         type={toast.type}
@@ -434,8 +334,6 @@ export default function MascotasPage() {
             + Registrar mascota
           </button>
         </div>
-
-        <LookupPanel onLoaded={handleLoaded} />
 
         {(showForm || editPet) && (
           <div className="mt-6 premium-card p-6">
@@ -470,7 +368,6 @@ export default function MascotasPage() {
               <PetCard
                 key={pet.id}
                 pet={pet}
-                ownerName={owners[pet.owner_id]}
                 onEdit={(p) => { setEditPet(p); setShowForm(false); }}
                 onDelete={handleDelete}
               />
@@ -485,6 +382,7 @@ export default function MascotasPage() {
           </div>
         )}
       </div>
+      </AuthGate>
     </main>
   );
 }

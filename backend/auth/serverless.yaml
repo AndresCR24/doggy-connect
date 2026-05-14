@@ -1,0 +1,134 @@
+service: doggy-connect-auth
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: us-east-1
+  environment:
+    COGNITO_USER_POOL_ID: !Ref CognitoUserPool
+    COGNITO_CLIENT_ID: !Ref CognitoUserPoolClient
+    # COGNITO_CLIENT_SECRET se define en SSM Parameter Store y se referencia así:
+    # COGNITO_CLIENT_SECRET: ${ssm:/doggy-connect/auth/client-secret}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminGetUser
+            - cognito-idp:AdminCreateUser
+            - cognito-idp:AdminSetUserPassword
+            - cognito-idp:ListUsers
+          Resource:
+            - !GetAtt CognitoUserPool.Arn
+
+plugins:
+  - serverless-offline
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    useStaticCache: false
+    useDownloadCache: false
+  serverless-offline:
+    noPrependStageInUrl: true
+
+functions:
+  api:
+    handler: handler.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+
+resources:
+  Resources:
+
+    # ── User Pool ─────────────────────────────────────────────────────────────
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: doggy-connect-${sls:stage}-pool
+        # El email es el username
+        UsernameAttributes:
+          - email
+        # Cognito envía el email de verificación automáticamente
+        AutoVerifiedAttributes:
+          - email
+        # Política de contraseñas
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireUppercase: true
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+            TemporaryPasswordValidityDays: 7
+        # Atributos del perfil
+        Schema:
+          - Name: email
+            AttributeDataType: String
+            Required: true
+            Mutable: true
+          - Name: name
+            AttributeDataType: String
+            Required: false
+            Mutable: true
+        # Configuración de verificación por email
+        VerificationMessageTemplate:
+          DefaultEmailOption: CONFIRM_WITH_CODE
+          EmailSubject: "Doggy Connect & Walk — Confirma tu cuenta"
+          EmailMessage: "Tu código de verificación es: {####}"
+        # Mensajes de recuperación de contraseña
+        AdminCreateUserConfig:
+          AllowAdminCreateUserOnly: false
+        AccountRecoverySetting:
+          RecoveryMechanisms:
+            - Name: verified_email
+              Priority: 1
+
+    # ── App Client ────────────────────────────────────────────────────────────
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: doggy-connect-${sls:stage}-client
+        UserPoolId: !Ref CognitoUserPool
+        # Habilitamos el flujo de usuario/contraseña para la API
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_SRP_AUTH
+        # Sin client secret para simplificar (se puede cambiar a true si se desea)
+        GenerateSecret: false
+        # Tokens de acceso válidos 1 hora; refresh token 30 días
+        AccessTokenValidity: 1
+        IdTokenValidity: 1
+        RefreshTokenValidity: 30
+        TokenValidityUnits:
+          AccessToken: hours
+          IdToken: hours
+          RefreshToken: days
+        # Prevenir la creación de usuarios no verificados en producción
+        PreventUserExistenceErrors: ENABLED
+
+    # ── Outputs exportados para otros servicios ───────────────────────────────
+  Outputs:
+    UserPoolId:
+      Value: !Ref CognitoUserPool
+      Export:
+        Name: doggy-connect-${sls:stage}-UserPoolId
+
+    UserPoolClientId:
+      Value: !Ref CognitoUserPoolClient
+      Export:
+        Name: doggy-connect-${sls:stage}-UserPoolClientId
+
+    AuthApiUrl:
+      Value: !Sub "https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${sls:stage}"
+      Export:
+        Name: doggy-connect-${sls:stage}-AuthApiUrl

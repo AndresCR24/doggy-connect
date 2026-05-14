@@ -128,3 +128,54 @@ export const matchApi = {
   deletePreferences: (petId) =>
     request("match", `/match-preferences/${petId}`, { method: "DELETE" }),
 };
+
+// ─── AUTH (Cognito) ────────────────────────────────────────────────────────
+// Todos los endpoints pasan por el proxy /api/auth/...
+
+export const authApi = {
+  /** Registra un usuario en Cognito. Cognito envía email de verificación. */
+  register: (body) =>
+    request("auth", "/auth/register", { method: "POST", body: JSON.stringify(body) }),
+
+  /** Confirma la cuenta con el código de 6 dígitos recibido por email. */
+  confirm: (email, code) =>
+    request("auth", "/auth/confirm", { method: "POST", body: JSON.stringify({ email, code }) }),
+
+  /** Reenvía el código de confirmación. */
+  resendCode: (email) =>
+    request("auth", "/auth/resend-code", { method: "POST", body: JSON.stringify({ email }) }),
+
+  /** Login: devuelve { access_token, id_token, refresh_token, expires_in }. */
+  login: (email, password) =>
+    request("auth", "/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+
+  /** Renueva los tokens con el refresh_token. */
+  refresh: (refresh_token) =>
+    request("auth", "/auth/refresh", { method: "POST", body: JSON.stringify({ refresh_token }) }),
+
+  /** Devuelve los atributos del usuario autenticado a partir del access_token. */
+  me: (access_token) =>
+    request("auth", `/auth/me?access_token=${encodeURIComponent(access_token)}`),
+
+  /** Cierra sesión (revoca tokens en Cognito). */
+  logout: (access_token) =>
+    request("auth", `/auth/logout?access_token=${encodeURIComponent(access_token)}`, { method: "POST" }),
+
+  /** Cambia la contraseña estando autenticado. */
+  changePassword: (access_token, old_password, new_password) =>
+    request("auth", "/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ access_token, old_password, new_password }),
+    }),
+
+  /** Inicia el flujo de recuperación de contraseña (envía código por email). */
+  forgotPassword: (email) =>
+    request("auth", "/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
+
+  /** Confirma la nueva contraseña con el código recibido por email. */
+  confirmForgotPassword: (email, code, new_password) =>
+    request("auth", "/auth/confirm-forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email, code, new_password }),
+    }),
+};

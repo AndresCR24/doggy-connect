@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Navbar from "../../components/Navbar";
 import { petsApi, matchApi } from "../../lib/apiClient";
+import AuthGate from "../../components/AuthGate";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -497,6 +498,7 @@ export default function MatchPage() {
   return (
     <main>
       <Navbar />
+      <AuthGate>
       <Toast msg={toast.msg} type={toast.type} />
       <MatchModal
         myPet={myPet}
@@ -662,6 +664,7 @@ export default function MatchPage() {
           </div>
         )}
       </div>
+      </AuthGate>
     </main>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "../../components/Navbar";
 import { walkersApi, usersApi, bookingsApi } from "../../lib/apiClient";
+import AuthGate from "../../components/AuthGate";
 
 function Toast({ msg, type, onClose }) {
   if (!msg) return null;
@@ -373,8 +374,6 @@ export default function PaseadoresPage() {
   const [walkers, setWalkers] = useState([]);
   const [userNames, setUserNames] = useState({});
   const [fetchingList, setFetchingList] = useState(true);
-  const [lookupId, setLookupId] = useState("");
-  const [lookupMode, setLookupMode] = useState("walker");
   const [showForm, setShowForm] = useState(false);
   const [matchTarget, setMatchTarget] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -413,30 +412,6 @@ export default function PaseadoresPage() {
     });
   }
 
-  async function handleLookup() {
-    if (!lookupId.trim()) return;
-    setFetchingList(true);
-    try {
-      let result;
-      if (lookupMode === "walker") {
-        result = [await walkersApi.get(lookupId.trim())];
-      } else {
-        result = await walkersApi.getByUser(lookupId.trim());
-        if (!Array.isArray(result)) result = [result];
-      }
-      setWalkers((prev) => {
-        const map = new Map(prev.map((w) => [w.id, w]));
-        result.forEach((w) => map.set(w.id, w));
-        return Array.from(map.values());
-      });
-      await enrichWithUserNames(result);
-    } catch (e) {
-      notify(e.message, "error");
-    } finally {
-      setFetchingList(false);
-    }
-  }
-
   async function handleCreate(body) {
     setFormLoading(true);
     try {
@@ -469,6 +444,7 @@ export default function PaseadoresPage() {
   return (
     <main>
       <Navbar />
+      <AuthGate>
       <Toast msg={toast.msg} type={toast.type} onClose={() => setToast({ msg: "", type: "ok" })} />
       <BookingModal
         walker={matchTarget}
@@ -508,44 +484,8 @@ export default function PaseadoresPage() {
           </div>
         )}
 
-        {/* Lookup + Filters */}
+        {/* Filters */}
         <div className="premium-card p-5 flex flex-col gap-4 mb-8">
-          <div className="flex gap-2 text-xs font-medium">
-            {[
-              { key: "walker", label: "Por Walker ID" },
-              { key: "user", label: "Por User ID" },
-            ].map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setLookupMode(t.key)}
-                className={`rounded-full px-3 py-1 transition ${
-                  lookupMode === t.key
-                    ? "bg-gray-900 text-white"
-                    : "border border-gray-200 text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={lookupId}
-              onChange={(e) => setLookupId(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-              placeholder={lookupMode === "walker" ? "UUID del paseador…" : "UUID del usuario…"}
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            />
-            <button
-              onClick={handleLookup}
-              disabled={fetchingList || !lookupId.trim()}
-              className="rounded-full bg-gray-900 px-5 py-2 text-sm text-white transition hover:-translate-y-0.5 hover:bg-gray-800 disabled:opacity-50"
-            >
-              {fetchingList ? "…" : "Buscar"}
-            </button>
-          </div>
-
-          {/* Filters */}
           {walkers.length > 0 && (
             <div className="flex flex-wrap gap-4 pt-1 border-t border-gray-100 text-xs text-slate-600 items-center">
               <span className="font-medium text-slate-700">Filtros:</span>
@@ -608,6 +548,7 @@ export default function PaseadoresPage() {
           </div>
         )}
       </div>
+      </AuthGate>
     </main>
   );
 }

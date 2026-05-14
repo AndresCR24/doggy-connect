@@ -202,47 +202,7 @@ function UserForm({ initial, onSave, onCancel, loading }) {
   );
 }
 
-function LookupPanel({ onLoaded }) {
-  const [userId, setUserId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  async function handleLookup() {
-    if (!userId.trim()) return;
-    setLoading(true);
-    setError("");
-    try {
-      const user = await usersApi.get(userId.trim());
-      onLoaded(user);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="premium-card p-5 flex flex-col gap-3">
-      <p className="text-sm font-medium text-slate-700">Buscar usuario por ID</p>
-      <div className="flex gap-2">
-        <input
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          placeholder="user-uuid…"
-          className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-        />
-        <button
-          onClick={handleLookup}
-          disabled={loading || !userId.trim()}
-          className="rounded-full bg-gray-900 px-5 py-2 text-sm text-white transition hover:-translate-y-0.5 hover:bg-gray-800 disabled:opacity-50"
-        >
-          {loading ? "…" : "Buscar"}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </div>
-  );
-}
 
 export default function UsuariosPage() {
   const [users, setUsers] = useState([]);
@@ -303,13 +263,6 @@ export default function UsuariosPage() {
     }
   }
 
-  function handleLoaded(user) {
-    setUsers((p) => {
-      if (p.find((u) => u.id === user.id)) return p;
-      return [user, ...p];
-    });
-  }
-
   return (
     <main>
       <Navbar />
@@ -336,9 +289,6 @@ export default function UsuariosPage() {
             + Nuevo usuario
           </button>
         </div>
-
-        {/* Lookup */}
-        <LookupPanel onLoaded={handleLoaded} />
 
         {/* Form */}
         {(showForm || editUser) && (

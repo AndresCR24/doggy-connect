@@ -19,9 +19,9 @@ const highlights = [
     description: "Organiza caminatas y conoce dueños en tu zona."
   },
   {
-    label: "Backend",
-    title: "Microservicios conectados",
-    description: "Usa el panel para probar users, pets, walkers, bookings y match."
+    label: "Registro",
+    title: "Perfil completo",
+    description: "Crea tu cuenta, agrega tus mascotas y empieza a hacer match."
   }
 ];
 
@@ -47,17 +47,17 @@ export default function HomePage() {
           <div>
             <div className="text-sm text-indigo-600 font-medium uppercase tracking-[0.18em]">Nuevo</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-              Panel completo del backend
+              Crea tu cuenta en segundos
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              El frontend ahora incluye una seccion para ejecutar todos los endpoints de los microservicios.
+              Regístrate, agrega tus mascotas y, si quieres, ofrece servicios de paseo. Todo en un solo flujo.
             </p>
           </div>
           <a
-            href="/backend"
+            href="/registro"
             className="inline-flex items-center justify-center rounded-full bg-gray-900 px-6 py-3 text-white transition hover:-translate-y-0.5 hover:bg-gray-800"
           >
-            Abrir panel backend
+            Registrarse
           </a>
         </div>
       </section>
