@@ -129,6 +129,36 @@ export const matchApi = {
     request("match", `/match-preferences/${petId}`, { method: "DELETE" }),
 };
 
+// ─── MEDIA ────────────────────────────────────────────────────────────────
+
+export const mediaApi = {
+  /** Solicita URL presignada para subir una imagen a S3 */
+  presign: (entity_type, entity_id, file_name, content_type) =>
+    request("media", "/media/presign", {
+      method: "POST",
+      body: JSON.stringify({ entity_type, entity_id, file_name, content_type }),
+    }),
+
+  /** Lista todas las fotos de una entidad (ej: entity_type="pet", entity_id=petId) */
+  listByEntity: (entity_type, entity_id) =>
+    request("media", `/media/${entity_type}/${entity_id}`),
+
+  /** Elimina una foto por su media_id */
+  remove: (media_id) =>
+    request("media", `/media/item/${media_id}`, { method: "DELETE" }),
+
+  /** Sube el archivo binario directamente a S3 usando la upload_url presignada.
+   *  PUT directo al bucket, sin pasar por el proxy de Next.js. */
+  uploadToS3: async (upload_url, file) => {
+    const res = await fetch(upload_url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!res.ok) throw new Error(`Error subiendo a S3: ${res.status}`);
+  },
+};
+
 // ─── AUTH (Cognito) ────────────────────────────────────────────────────────
 // Todos los endpoints pasan por el proxy /api/auth/...
 

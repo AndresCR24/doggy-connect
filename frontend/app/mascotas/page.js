@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import { petsApi } from "../../lib/apiClient";
 import AuthGate from "../../components/AuthGate";
@@ -47,9 +48,12 @@ function Toast({ msg, type, onClose }) {
 
 const SPECIES_EMOJI = { dog: "🐕", cat: "🐱" };
 
-function PetCard({ pet, onEdit, onDelete }) {
+function PetCard({ pet, onView, onEdit, onDelete }) {
   return (
-    <div className="premium-card p-5 flex flex-col gap-3 transition duration-200 hover:-translate-y-0.5">
+    <div
+      className="premium-card p-5 flex flex-col gap-3 transition duration-200 hover:-translate-y-0.5 cursor-pointer"
+      onClick={() => onView(pet.id)}
+    >
       <div className="flex items-center gap-3">
         <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-2xl shadow-md shadow-purple-300/40">
           {SPECIES_EMOJI[pet.especie] ?? "🐾"}
@@ -75,7 +79,13 @@ function PetCard({ pet, onEdit, onDelete }) {
         )}
       </div>
       <p className="text-[10px] text-slate-400 font-mono truncate">ID: {pet.id}</p>
-      <div className="flex gap-2 pt-1">
+      <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={() => onView(pet.id)}
+          className="flex-1 rounded-full border border-purple-200 bg-purple-50 py-1.5 text-xs font-medium text-purple-700 transition hover:bg-purple-100"
+        >
+          📷 Perfil
+        </button>
         <button
           onClick={() => onEdit(pet)}
           className="flex-1 rounded-full border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100"
@@ -234,6 +244,7 @@ function PetForm({ initial, onSave, onCancel, loading }) {
 
 export default function MascotasPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [pets, setPets] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editPet, setEditPet] = useState(null);
@@ -353,6 +364,7 @@ export default function MascotasPage() {
               <PetCard
                 key={pet.id}
                 pet={pet}
+                onView={(id) => router.push(`/mascotas/${id}`)}
                 onEdit={(p) => { setEditPet(p); setShowForm(false); }}
                 onDelete={handleDelete}
               />
