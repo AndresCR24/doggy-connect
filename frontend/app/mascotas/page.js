@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
-import { petsApi } from "../../lib/apiClient";
+import { petsApi, mediaApi } from "../../lib/apiClient";
 import AuthGate from "../../components/AuthGate";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -48,15 +48,17 @@ function Toast({ msg, type, onClose }) {
 
 const SPECIES_EMOJI = { dog: "🐕", cat: "🐱" };
 
-function PetCard({ pet, onView, onEdit, onDelete }) {
+function PetCard({ pet, avatarUrl, onView, onEdit, onDelete }) {
   return (
     <div
       className="premium-card p-5 flex flex-col gap-3 transition duration-200 hover:-translate-y-0.5 cursor-pointer"
       onClick={() => onView(pet.id)}
     >
       <div className="flex items-center gap-3">
-        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-4xl shadow-md shadow-purple-300/40 flex-shrink-0">
-          {SPECIES_EMOJI[pet.especie] ?? "🐾"}
+        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-4xl shadow-md shadow-purple-300/40 flex-shrink-0 overflow-hidden">
+          {avatarUrl
+            ? <img src={avatarUrl} alt={pet.nombre} className="w-full h-full object-cover" />
+            : (SPECIES_EMOJI[pet.especie] ?? "🐾")}
         </div>
         <div className="min-w-0">
           <p className="font-semibold text-slate-900">{pet.nombre}</p>
@@ -250,12 +252,29 @@ export default function MascotasPage() {
   const [editPet, setEditPet] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [petAvatars, setPetAvatars] = useState({});
   const [toast, setToast] = useState({ msg: "", type: "ok" });
 
   useEffect(() => {
     if (!user) return;
     petsApi.getByOwner(user.id)
-      .then((data) => setPets(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setPets(list);
+        // Cargar avatares en paralelo
+        Promise.allSettled(
+          list.map((p) =>
+            mediaApi
+              .listByEntity("pet_avatar", p.id)
+              .then((res) => ({ id: p.id, url: Array.isArray(res) && res[0]?.public_url ? res[0].public_url : null }))
+              .catch(() => ({ id: p.id, url: null }))
+          )
+        ).then((results) => {
+          const map = {};
+          results.forEach((r) => { if (r.status === "fulfilled") map[r.value.id] = r.value.url; });
+          setPetAvatars(map);
+        });
+      })
       .catch((e) => notify(e.message, "error"))
       .finally(() => setFetching(false));
   }, [user]);
@@ -364,6 +383,7 @@ export default function MascotasPage() {
               <PetCard
                 key={pet.id}
                 pet={pet}
+                avatarUrl={petAvatars[pet.id]}
                 onView={(id) => router.push(`/mascotas/${id}`)}
                 onEdit={(p) => { setEditPet(p); setShowForm(false); }}
                 onDelete={handleDelete}

@@ -1,10 +1,7 @@
 {
-  "/not-found": "app/not-found.js",
   "/match/page": "app/match/page.js",
-  "/api/[service]/[[...path]]/route": "app/api/[service]/[[...path]]/route.js",
-  "/mascotas/[petId]/page": "app/mascotas/[petId]/page.js",
-  "/reservas/page": "app/reservas/page.js",
-  "/page": "app/page.js",
   "/mascotas/page": "app/mascotas/page.js",
-  "/paseadores/page": "app/paseadores/page.js"
+  "/page": "app/page.js",
+  "/reservas/page": "app/reservas/page.js",
+  "/mascotas/[petId]/page": "app/mascotas/[petId]/page.js"
 }
