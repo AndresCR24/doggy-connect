@@ -820,6 +820,9 @@ video {
 .min-h-\[60vh\] {
   min-height: 60vh;
 }
+.min-h-\[70vh\] {
+  min-height: 70vh;
+}
 .min-h-\[80vh\] {
   min-height: 80vh;
 }
@@ -1778,6 +1781,10 @@ video {
   --tw-text-opacity: 1;
   color: rgb(245 158 11 / var(--tw-text-opacity, 1));
 }
+.text-amber-700 {
+  --tw-text-opacity: 1;
+  color: rgb(180 83 9 / var(--tw-text-opacity, 1));
+}
 .text-amber-800 {
   --tw-text-opacity: 1;
   color: rgb(146 64 14 / var(--tw-text-opacity, 1));
@@ -1917,6 +1924,9 @@ video {
 .text-yellow-700 {
   --tw-text-opacity: 1;
   color: rgb(161 98 7 / var(--tw-text-opacity, 1));
+}
+.underline {
+  text-decoration-line: underline;
 }
 .antialiased {
   -webkit-font-smoothing: antialiased;

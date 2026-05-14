@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Navbar from "../../components/Navbar";
 import { petsApi, matchApi } from "../../lib/apiClient";
 import AuthGate from "../../components/AuthGate";
+import { useAuth } from "../../contexts/AuthContext";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -307,9 +308,59 @@ function SetupScreen({ onStart }) {
   );
 }
 
+// ─── Selector de mascota ─────────────────────────────────────────────────────
+
+function PetSelectorScreen({ pets, onSelect }) {
+  return (
+    <div className="min-h-[80vh] flex flex-col items-center justify-center px-6">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="flex justify-center gap-2 text-6xl mb-4">
+            <span>🐕</span>
+            <span className="text-5xl self-center">💞</span>
+            <span>🐱</span>
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">PawMatch</h1>
+          <p className="mt-2 text-slate-500 text-sm max-w-sm mx-auto">
+            ¿Con cuál de tus mascotas quieres explorar hoy?
+          </p>
+        </div>
+        <div className="space-y-3">
+          {pets.map((pet) => (
+            <button
+              key={pet.id}
+              onClick={() => onSelect(pet)}
+              className="w-full premium-card px-5 py-4 flex items-center gap-4 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div
+                className={`h-14 w-14 rounded-full bg-gradient-to-br ${gradient(pet.id)} flex items-center justify-center text-3xl shadow-md flex-shrink-0`}
+              >
+                {petEmoji(pet)}
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-slate-900">{pet.nombre}</p>
+                <p className="text-sm text-slate-400 capitalize">
+                  {pet.especie}{pet.raza ? ` · ${pet.raza}` : ""}{pet.edad != null ? ` · ${pet.edad} años` : ""}
+                </p>
+              </div>
+              <span className="ml-auto text-slate-300 text-xl">›</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página principal ────────────────────────────────────────────────────────
 
 export default function MatchPage() {
+  const { user } = useAuth();
+
+  // Mascotas del usuario
+  const [myPets, setMyPets] = useState([]);
+  const [loadingPets, setLoadingPets] = useState(true);
+
   // Setup
   const [myPet, setMyPet] = useState(null);
   const [started, setStarted] = useState(false);
@@ -334,6 +385,23 @@ export default function MatchPage() {
     setToast({ msg, type });
     setTimeout(() => setToast({ msg: "", type: "ok" }), 3000);
   }
+
+  // ─── Cargar mascotas del usuario automáticamente ────────────────────────
+
+  useEffect(() => {
+    if (!user) return;
+    setLoadingPets(true);
+    petsApi.getByOwner(user.id)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setMyPets(list);
+        // Si solo tiene una mascota, arrancar automáticamente
+        if (list.length === 1) handleStart(list[0]);
+      })
+      .catch(() => setMyPets([]))
+      .finally(() => setLoadingPets(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // ─── Iniciar sesión ──────────────────────────────────────────────────────
 
@@ -482,11 +550,51 @@ export default function MatchPage() {
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
-  if (!started) {
+  // Cargando mascotas
+  if (loadingPets) {
     return (
       <main>
         <Navbar />
-        <SetupScreen onStart={handleStart} />
+        <div className="min-h-[70vh] flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-5xl mb-3 animate-bounce">🐾</div>
+            <p className="text-slate-400 text-sm">Cargando tus mascotas…</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Sin mascotas registradas
+  if (!loadingPets && !started && myPets.length === 0) {
+    return (
+      <main>
+        <Navbar />
+        <div className="min-h-[70vh] flex items-center justify-center px-6">
+          <div className="premium-card p-10 text-center max-w-sm space-y-5">
+            <div className="text-6xl">🐾</div>
+            <h2 className="text-xl font-bold text-slate-900">No tienes mascotas registradas</h2>
+            <p className="text-sm text-slate-500">
+              Registra al menos una mascota para poder usar PawMatch.
+            </p>
+            <a
+              href="/perfil"
+              className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-indigo-700"
+            >
+              Agregar mascota en mi perfil
+            </a>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Selector de mascota (cuando tiene varias y aún no eligió)
+  if (!started && myPets.length > 1) {
+    return (
+      <main>
+        <Navbar />
+        <PetSelectorScreen pets={myPets} onSelect={handleStart} />
       </main>
     );
   }
@@ -524,10 +632,17 @@ export default function MatchPage() {
             </div>
           </div>
           <button
-            onClick={() => { setStarted(false); setQueue([]); setCurrentIdx(0); setMatches([]); }}
+            onClick={() => {
+              setStarted(false);
+              setQueue([]);
+              setCurrentIdx(0);
+              setMatches([]);
+              // Si solo tiene 1 mascota vuelve a empezar con ella; si tiene varias muestra selector
+              if (myPets.length === 1) handleStart(myPets[0]);
+            }}
             className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-500 transition hover:bg-gray-100"
           >
-            Cambiar mascota
+            {myPets.length > 1 ? "Cambiar mascota" : "Reiniciar"}
           </button>
         </div>
 

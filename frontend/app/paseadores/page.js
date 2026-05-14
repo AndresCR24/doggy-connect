@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Navbar from "../../components/Navbar";
-import { walkersApi, usersApi, bookingsApi } from "../../lib/apiClient";
+import { walkersApi, usersApi, bookingsApi, petsApi } from "../../lib/apiClient";
 import AuthGate from "../../components/AuthGate";
+import { useAuth } from "../../contexts/AuthContext";
 
 function Toast({ msg, type, onClose }) {
   if (!msg) return null;
@@ -196,7 +197,7 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function BookingModal({ walker, walkerName, onClose, onSend }) {
+function BookingModal({ walker, walkerName, onClose, onSend, userPets = [], userId = "" }) {
   const inputCls =
     "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300";
 
@@ -210,6 +211,21 @@ function BookingModal({ walker, walkerName, onClose, onSend }) {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Pre-llenar cuando el modal se abre
+  useEffect(() => {
+    if (!walker) return;
+    setForm({
+      pet_id: userPets.length === 1 ? userPets[0].id : "",
+      owner_user_id: userId,
+      fecha: "",
+      hora: "09:00",
+      duration_minutes: "60",
+      notes: "",
+    });
+    setErrors({});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walker]);
 
   if (!walker) return null;
 
@@ -277,21 +293,42 @@ function BookingModal({ walker, walkerName, onClose, onSend }) {
           </div>
         </div>
 
-        {/* IDs */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Selección de mascota */}
+        {userPets.length === 0 ? (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-700">
+            ⚠️ No tienes mascotas registradas.{" "}
+            <a href="/perfil" className="font-semibold underline">Agrega una en tu perfil</a>{" "}
+            antes de agendar.
+          </div>
+        ) : userPets.length === 1 ? (
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">ID mascota *</label>
-            <input name="pet_id" value={form.pet_id} onChange={handleChange}
-              placeholder="UUID mascota" className={inputCls} />
+            <label className="block text-xs font-medium text-slate-600 mb-1">Mascota</label>
+            <div className="flex items-center gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5">
+              <span className="text-xl">
+                {userPets[0].especie?.toLowerCase().includes("gato") ? "🐈" : "🐕"}
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{userPets[0].nombre}</p>
+                <p className="text-xs text-slate-400 capitalize">
+                  {userPets[0].especie}{userPets[0].raza ? ` · ${userPets[0].raza}` : ""}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Mascota *</label>
+            <select name="pet_id" value={form.pet_id} onChange={handleChange} className={inputCls}>
+              <option value="">— Elige tu mascota —</option>
+              {userPets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}{p.especie ? ` (${p.especie})` : ""}
+                </option>
+              ))}
+            </select>
             {errors.pet_id && <p className="mt-0.5 text-xs text-red-600">{errors.pet_id}</p>}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">ID dueño *</label>
-            <input name="owner_user_id" value={form.owner_user_id} onChange={handleChange}
-              placeholder="UUID usuario" className={inputCls} />
-            {errors.owner_user_id && <p className="mt-0.5 text-xs text-red-600">{errors.owner_user_id}</p>}
-          </div>
-        </div>
+        )}
 
         {/* Fecha y hora */}
         <div className="grid grid-cols-2 gap-3">
@@ -356,7 +393,7 @@ function BookingModal({ walker, walkerName, onClose, onSend }) {
 
         {/* Acciones */}
         <div className="flex gap-2 pt-1">
-          <button onClick={handleSend} disabled={loading}
+          <button onClick={handleSend} disabled={loading || userPets.length === 0}
             className="flex-1 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 py-2.5 text-sm text-white font-semibold transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-300/40 disabled:opacity-50">
             {loading ? "Agendando…" : "Confirmar reserva"}
           </button>
@@ -371,8 +408,10 @@ function BookingModal({ walker, walkerName, onClose, onSend }) {
 }
 
 export default function PaseadoresPage() {
+  const { user } = useAuth();
   const [walkers, setWalkers] = useState([]);
   const [userNames, setUserNames] = useState({});
+  const [userPets, setUserPets] = useState([]);
   const [fetchingList, setFetchingList] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [matchTarget, setMatchTarget] = useState(null);
@@ -399,6 +438,13 @@ export default function PaseadoresPage() {
       .catch((e) => notify(e.message, "error"))
       .finally(() => setFetchingList(false));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    petsApi.getByOwner(user.id)
+      .then((data) => setUserPets(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [user]);
 
   async function enrichWithUserNames(list) {    const unknown = list.filter((w) => !userNames[w.user_id]).map((w) => w.user_id);
     if (!unknown.length) return;
@@ -451,6 +497,8 @@ export default function PaseadoresPage() {
         walkerName={matchTarget ? userNames[matchTarget.user_id] : null}
         onClose={() => setMatchTarget(null)}
         onSend={handleMatchSend}
+        userPets={userPets}
+        userId={user?.id ?? ""}
       />
 
       <div className="mx-auto max-w-6xl px-6 py-10">

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import { bookingsApi } from "../../lib/apiClient";
 import AuthGate from "../../components/AuthGate";
+import { useAuth } from "../../contexts/AuthContext";
 
 const STATUS_CONFIG = {
   pending:     { label: "Pendiente",    color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
@@ -100,12 +101,6 @@ function BookingCard({ booking, onStatusChange, onDelete, onEdit }) {
       </div>
 
       <div className="flex gap-2 pt-1">
-        <button
-          onClick={() => onEdit(booking)}
-          className="flex-1 rounded-full border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100"
-        >
-          Editar
-        </button>
         <button
           onClick={() => onDelete(booking.id)}
           className="flex-1 rounded-full border border-red-200 bg-red-50 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100"
@@ -299,45 +294,53 @@ function LookupPanel({ onLoaded }) {
 }
 
 export default function ReservasPage() {
+  const { user, walkerProfile } = useAuth();
+  const isWalker = !!walkerProfile;
+
+  // Reservas como dueño
   const [bookings, setBookings] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editBooking, setEditBooking] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState({ msg: "", type: "ok" });
+  const [fetchingBookings, setFetchingBookings] = useState(true);
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Pedidos como paseador
+  const [pedidos, setPedidos] = useState([]);
+  const [fetchingPedidos, setFetchingPedidos] = useState(false);
+  const [filterPedidoStatus, setFilterPedidoStatus] = useState("all");
+
+  // UI
+  const [activeTab, setActiveTab] = useState("reservas");
+  const [toast, setToast] = useState({ msg: "", type: "ok" });
 
   function notify(msg, type = "ok") {
     setToast({ msg, type });
     setTimeout(() => setToast({ msg: "", type: "ok" }), 3500);
   }
 
-  async function handleCreate(body) {
-    setLoading(true);
-    try {
-      const b = await bookingsApi.create(body);
-      setBookings((p) => [b, ...p]);
-      setShowForm(false);
-      notify("Reserva creada exitosamente.");
-    } catch (e) {
-      notify(e.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Cargar reservas del usuario automáticamente
+  useEffect(() => {
+    if (!user) return;
+    setFetchingBookings(true);
+    bookingsApi.getByOwner(user.id)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setBookings(list.sort((a, b) => new Date(b.start_time) - new Date(a.start_time)));
+      })
+      .catch((e) => notify(e.message, "error"))
+      .finally(() => setFetchingBookings(false));
+  }, [user]);
 
-  async function handleUpdate(body) {
-    setLoading(true);
-    try {
-      const updated = await bookingsApi.update(editBooking.id, body);
-      setBookings((p) => p.map((x) => (x.id === updated.id ? updated : x)));
-      setEditBooking(null);
-      notify("Reserva actualizada.");
-    } catch (e) {
-      notify(e.message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Cargar pedidos si el usuario es paseador
+  useEffect(() => {
+    if (!user || !isWalker) return;
+    setFetchingPedidos(true);
+    bookingsApi.getByWalker(user.id)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setPedidos(list.sort((a, b) => new Date(b.start_time) - new Date(a.start_time)));
+      })
+      .catch((e) => notify(e.message, "error"))
+      .finally(() => setFetchingPedidos(false));
+  }, [user, isWalker]);
 
   async function handleDelete(id) {
     if (!confirm("¿Eliminar esta reserva?")) return;
@@ -360,6 +363,16 @@ export default function ReservasPage() {
     }
   }
 
+  async function handlePedidoStatusChange(id, status) {
+    try {
+      const updated = await bookingsApi.updateStatus(id, status);
+      setPedidos((p) => p.map((x) => (x.id === updated.id ? updated : x)));
+      notify(`Pedido actualizado a "${STATUS_CONFIG[status]?.label ?? status}".`);
+    } catch (e) {
+      notify(e.message, "error");
+    }
+  }
+
   function handleLoaded(newBookings) {
     setBookings((prev) => {
       const map = new Map(prev.map((b) => [b.id, b]));
@@ -375,6 +388,11 @@ export default function ReservasPage() {
       ? bookings
       : bookings.filter((b) => b.status === filterStatus);
 
+  const filteredPedidos =
+    filterPedidoStatus === "all"
+      ? pedidos
+      : pedidos.filter((b) => b.status === filterPedidoStatus);
+
   return (
     <main>
       <Navbar />
@@ -386,81 +404,141 @@ export default function ReservasPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-              Módulo de Reservas
+              {isWalker ? "Reservas y Pedidos" : "Mis Reservas"}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Gestiona las citas de paseo activas e historial
+              Historial y estado de tus paseos agendados
             </p>
           </div>
-          <button
-            onClick={() => { setShowForm((p) => !p); setEditBooking(null); }}
-            className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-6 py-2.5 text-sm text-white transition hover:-translate-y-0.5 hover:bg-gray-800"
-          >
-            {showForm ? "Cancelar" : "+ Nueva reserva"}
-          </button>
         </div>
 
-        {/* Form */}
-        {(showForm || editBooking) && (
-          <div className="mb-8 premium-card p-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">
-              {editBooking ? "Editar reserva" : "Nueva reserva"}
-            </h2>
-            <BookingForm
-              initial={editBooking}
-              onSave={editBooking ? handleUpdate : handleCreate}
-              onCancel={() => { setShowForm(false); setEditBooking(null); }}
-              loading={loading}
-            />
-          </div>
-        )}
-
-        <LookupPanel onLoaded={handleLoaded} />
-
-        {/* Status filter tabs */}
-        {bookings.length > 0 && (
-          <div className="mt-6 flex flex-wrap gap-2 text-xs font-medium">
-            <button
-              onClick={() => setFilterStatus("all")}
-              className={`rounded-full px-3 py-1 transition ${filterStatus === "all" ? "bg-gray-900 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-100"}`}
-            >
-              Todas ({bookings.length})
-            </button>
-            {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-              const count = bookings.filter((b) => b.status === key).length;
-              if (!count) return null;
-              return (
-                <button key={key} onClick={() => setFilterStatus(key)}
-                  className={`rounded-full border px-3 py-1 transition ${filterStatus === key ? cfg.color + " font-semibold" : "border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
-                  {cfg.label} ({count})
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Cards */}
-        {filtered.length > 0 ? (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((b) => (
-              <BookingCard
-                key={b.id}
-                booking={b}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-                onEdit={(bk) => { setEditBooking(bk); setShowForm(false); }}
-              />
+        {/* Tabs (solo si es paseador) */}
+        {isWalker && (
+          <div className="flex rounded-full bg-gray-100 p-1 gap-1 w-full max-w-xs mb-8">
+            {[
+              { key: "reservas", label: "Mis Reservas" },
+              { key: "pedidos",  label: `Pedidos ${pedidos.filter(p => p.status === "pending").length > 0 ? `(${pedidos.filter(p => p.status === "pending").length} nuevos)` : ""}` },
+            ].map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                  activeTab === t.key
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {t.label}
+              </button>
             ))}
           </div>
-        ) : (
-          <div className="mt-10 premium-card p-10 text-center">
-            <div className="text-5xl mb-3">📅</div>
-            <p className="text-slate-500 text-sm">
-              {bookings.length
-                ? "No hay reservas con ese estado."
-                : "Busca reservas por ID, dueño o paseador, o crea una nueva."}
-            </p>
-          </div>
+        )}
+
+        {/* ── TAB: MIS RESERVAS ──────────────────────────────────────────── */}
+        {(!isWalker || activeTab === "reservas") && (
+          <>
+            {/* Status filter tabs */}
+            {bookings.length > 0 && (
+              <div className="flex flex-wrap gap-2 text-xs font-medium mb-4">
+                <button
+                  onClick={() => setFilterStatus("all")}
+                  className={`rounded-full px-3 py-1 transition ${filterStatus === "all" ? "bg-gray-900 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-100"}`}
+                >
+                  Todas ({bookings.length})
+                </button>
+                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                  const count = bookings.filter((b) => b.status === key).length;
+                  if (!count) return null;
+                  return (
+                    <button key={key} onClick={() => setFilterStatus(key)}
+                      className={`rounded-full border px-3 py-1 transition ${filterStatus === key ? cfg.color + " font-semibold" : "border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
+                      {cfg.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {fetchingBookings ? (
+              <div className="mt-10 text-center">
+                <div className="text-5xl mb-3 animate-bounce">🐾</div>
+                <p className="text-slate-400 text-sm">Cargando tus reservas…</p>
+              </div>
+            ) : filtered.length > 0 ? (
+              <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    onStatusChange={handleStatusChange}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-10 premium-card p-10 text-center">
+                <div className="text-5xl mb-3">📅</div>
+                <p className="text-slate-500 text-sm">
+                  {bookings.length
+                    ? "No hay reservas con ese estado."
+                    : "Aún no tienes reservas. Explora los paseadores y agenda tu primer paseo."}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── TAB: PEDIDOS (solo paseadores) ─────────────────────────────── */}
+        {isWalker && activeTab === "pedidos" && (
+          <>
+            {pedidos.length > 0 && (
+              <div className="flex flex-wrap gap-2 text-xs font-medium mb-4">
+                <button
+                  onClick={() => setFilterPedidoStatus("all")}
+                  className={`rounded-full px-3 py-1 transition ${filterPedidoStatus === "all" ? "bg-gray-900 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-100"}`}
+                >
+                  Todos ({pedidos.length})
+                </button>
+                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                  const count = pedidos.filter((b) => b.status === key).length;
+                  if (!count) return null;
+                  return (
+                    <button key={key} onClick={() => setFilterPedidoStatus(key)}
+                      className={`rounded-full border px-3 py-1 transition ${filterPedidoStatus === key ? cfg.color + " font-semibold" : "border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
+                      {cfg.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {fetchingPedidos ? (
+              <div className="mt-10 text-center">
+                <div className="text-5xl mb-3 animate-bounce">🦮</div>
+                <p className="text-slate-400 text-sm">Cargando pedidos…</p>
+              </div>
+            ) : filteredPedidos.length > 0 ? (
+              <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredPedidos.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    booking={b}
+                    onStatusChange={handlePedidoStatusChange}
+                    onDelete={() => {}}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-10 premium-card p-10 text-center">
+                <div className="text-5xl mb-3">🦮</div>
+                <p className="text-slate-500 text-sm">
+                  {pedidos.length
+                    ? "No hay pedidos con ese estado."
+                    : "No tienes pedidos de paseo por ahora."}
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
       </AuthGate>
